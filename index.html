@@ -3,738 +3,572 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jerson Lopez: Performance Analysis & Growth Blueprint</title>
-    
+    <title>NEST 2.0: The G.O.P.R.O. Evolution</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <!-- Font Awesome for Icons (using Unicode primarily, but good for fallback) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- FontAwesome (For Icons - NO SVG Graphics used directly) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-
-    <!-- Chosen Palette: Energetic Professional -->
-    <!-- 
-         Primary Blue: #2563EB (blue-600)
-         Accent Orange: #F97316 (orange-500)
-         Danger Red: #EF4444 (red-500)
-         Success Green: #10B981 (emerald-500)
-         Dark Slate: #1E293B (slate-800)
-         Background: #F8FAFC (slate-50)
-    -->
-
-    <!-- Application Structure Plan: 
-         1. Header: High-impact title and summary of lost opportunity ($12,000 hook).
-         2. Executive Summary (Archetypes): Visual comparison of "The Fixer" vs "The Solution Provider" using cards.
-         3. The Data Reality (KPIs): Bar charts comparing Jerson's current metrics to company goals.
-         4. The Smoking Gun (Case Studies): Deep dive into specific jobs with a stacked bar chart showing lost revenue.
-         5. The Process Fix (NEST): Interactive visual list showing the 4 mandatory process changes.
-         6. Interactive Simulator: A slider-based tool to show potential income growth based on conversion rate.
-         7. Discovery Checklist: Cards highlighting the mandatory questions.
-    -->
-
-    <!-- Visualization & Content Choices:
-         1. KPI Comparison -> Goal: Compare -> Bar Charts (Chart.js) -> Clear visual of the gap between current (4%) and target (25%).
-         2. Lost Revenue (Andrey Job) -> Goal: Compare/Inform -> Horizontal Stacked Bar (Chart.js) -> starkly contrasts $400 collected vs $1200 lost.
-         3. NEST Process -> Goal: Organize/Inform -> Styled HTML List -> Clear, step-by-step mandates.
-         4. Revenue Simulator -> Goal: Inform/Engage -> Custom JS/HTML -> Allows user to "feel" the impact of conversion rate on income.
-    -->
-
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
-
     <style>
+        /* Custom Font Import */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
         body {
             font-family: 'Inter', sans-serif;
             background-color: #F8FAFC;
             color: #1E293B;
-            scroll-behavior: smooth;
         }
 
-        /* Chart Container Styling - MANDATORY */
+        /* Palette Definition 
+           Primary Blue: #2563EB
+           Vibrant Orange: #F97316
+           Trust Teal: #14B8A6
+           Dark Slate: #1E293B
+        */
+
+        /* Chart Container Styling - Strict Adherence to Requirements */
         .chart-container {
             position: relative;
             width: 100%;
-            max-width: 600px;
+            max-width: 650px; /* Max width constraint */
             margin-left: auto;
             margin-right: auto;
-            height: 300px;
-            max-height: 400px;
+            height: 400px; /* Base height */
+            max-height: 450px;
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        @media (min-width: 768px) {
+
+        /* Responsive adjustments for chart height */
+        @media (max-width: 768px) {
             .chart-container {
-                height: 350px;
+                height: 300px;
+                max-height: 350px;
             }
         }
 
-        /* Custom Utilities */
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        .section-card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
         }
 
-        .step-number {
-            width: 3rem;
-            height: 3rem;
+        .section-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .gradient-text {
+            background: linear-gradient(to right, #2563EB, #14B8A6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* HTML Flowchart Styles */
+        .flow-step {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            border-radius: 9999px;
-            font-weight: 700;
-            color: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Hide scrollbar for clean horizontal scroll if needed */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        
-        input[type=range] {
-            -webkit-appearance: none; 
-            background: transparent; 
-        }
-        
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 24px;
-            width: 24px;
-            border-radius: 50%;
-            background: #2563EB;
-            cursor: pointer;
-            margin-top: -8px; 
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        }
-        
-        input[type=range]::-webkit-slider-runnable-track {
+            padding: 1rem;
+            border: 2px solid #E2E8F0;
+            border-radius: 0.75rem;
+            background-color: #F1F5F9;
             width: 100%;
-            height: 8px;
-            cursor: pointer;
-            background: #CBD5E1;
-            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .flow-step:hover {
+            border-color: #F97316;
+            background-color: #FFF7ED;
+        }
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: #94A3B8;
+            margin: 0.5rem 0;
+        }
+        @media (min-width: 768px) {
+            .flow-arrow {
+                transform: rotate(-90deg);
+                margin: 0 1rem;
+            }
         }
     </style>
+    <!-- 
+        NO SVG USED.
+        NO MERMAID JS USED.
+        Palette: Vibrant Professional (Blue/Orange/Teal)
+    -->
 </head>
-<body class="text-slate-800">
+<body class="antialiased">
 
-    <!-- Navigation / Progress Indicator -->
-    <nav class="fixed top-0 w-full bg-slate-900/95 backdrop-blur z-50 border-b border-slate-700 text-white py-3">
-        <div class="max-w-7xl mx-auto px-4 flex justify-between items-center">
-            <div class="font-bold text-lg tracking-tight"><span class="text-orange-500">PERFORMANCE</span> BLUEPRINT</div>
-            <div class="text-xs md:text-sm text-slate-400 font-medium">Jerson Lopez • Coaching Review</div>
-        </div>
-    </nav>
-
-    <!-- HERO SECTION -->
-    <header class="pt-32 pb-16 px-6 bg-slate-900 text-white">
-        <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-            <div>
-                <div class="inline-block px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border border-orange-500/30">
-                    High Priority Assessment
+    <!-- Hero Section -->
+    <header class="bg-slate-900 text-white pt-16 pb-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto text-center">
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-4">
+                <span class="text-blue-400">NEST</span> 2.0
+            </h1>
+            <p class="text-xl md:text-2xl text-slate-300 font-light max-w-3xl mx-auto">
+                The Evolution of Trade Service: Integrating <span class="text-orange-400 font-bold">G.O.P.R.O. Psychology</span> into the Cardinal Standard.
+            </p>
+            <div class="mt-8 flex justify-center gap-4">
+                <div class="bg-slate-800 px-6 py-2 rounded-full border border-slate-700">
+                    <span class="text-teal-400 font-bold">N</span>urture
                 </div>
-                <h1 class="text-4xl md:text-5xl font-extrabold leading-tight mb-6">
-                    From "Fixer"<br>to <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">Solution Provider</span>
-                </h1>
-                <p class="text-slate-400 text-lg leading-relaxed mb-8">
-                    Jerson is technically proficient but financially underperforming. By treating symptoms instead of systems, he is leaving significant revenue on the table. This blueprint outlines the data, the gap, and the mandatory process changes.
-                </p>
-                <div class="flex flex-wrap gap-4">
-                    <a href="#kpi-section" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition-colors">
-                        View The Data
-                    </a>
-                    <a href="#simulator-section" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-bold transition-colors border border-slate-700">
-                        Income Simulator
-                    </a>
+                <div class="bg-slate-800 px-6 py-2 rounded-full border border-slate-700">
+                    <span class="text-teal-400 font-bold">E</span>valuate
                 </div>
-            </div>
-            <!-- Hero Stat Card -->
-            <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-2xl border border-slate-700 shadow-2xl relative overflow-hidden transform hover:scale-105 transition-transform duration-300">
-                <div class="absolute top-0 right-0 p-4 opacity-5">
-                    <i class="fa-solid fa-sack-dollar text-9xl"></i>
+                <div class="bg-slate-800 px-6 py-2 rounded-full border border-slate-700">
+                    <span class="text-teal-400 font-bold">S</span>olutions
                 </div>
-                <h3 class="text-slate-400 font-bold uppercase text-sm tracking-widest mb-2">Estimated Lost Commission</h3>
-                <div class="text-5xl font-bold text-orange-500 mb-2">$12,000+</div>
-                <p class="text-slate-500 text-sm mb-6">Last 60 Days • Based on 4% Conversion Rate</p>
-                <div class="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
-                    <div class="h-full bg-orange-500 w-[16%]"></div> <!-- Visualizing the small portion captured -->
-                </div>
-                <div class="flex justify-between text-xs text-slate-400 mt-2">
-                    <span>Captured</span>
-                    <span>Potential Opportunity</span>
+                <div class="bg-slate-800 px-6 py-2 rounded-full border border-slate-700">
+                    <span class="text-teal-400 font-bold">T</span>rust
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- SECTION 1: THE MINDSET SHIFT (ARCHETYPES) -->
-    <section class="py-16 px-6 bg-slate-50">
-        <div class="max-w-6xl mx-auto">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl font-bold text-slate-900 mb-4">The Identity Crisis</h2>
-                <p class="text-slate-600 max-w-2xl mx-auto">
-                    Jerson's "nice guy" approach is effectively a pay cut. We need to shift his identity from a helpful fixer to a professional consultant.
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+
+        <!-- Section 1: The Philosophy Shift -->
+        <section>
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 border-l-4 border-blue-600 pl-4">The Shift: Checklist vs. Mindset</h2>
+                <p class="text-lg text-slate-600 leading-relaxed max-w-4xl">
+                    The traditional NEST process provided a robust technical checklist, but it often left technicians feeling like "robots" and customers feeling processed. NEST 2.0, powered by the G.O.P.R.O. engine, shifts the focus to <strong>human psychology</strong>. We aren't just checking boxes; we are managing anxiety and building authority.
                 </p>
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- The Fixer (Current) -->
-                <div class="bg-white p-8 rounded-xl shadow-md border-t-4 border-slate-400 card-hover">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 text-xl">
-                            <i class="fa-solid fa-wrench"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-slate-800">The Fixer (Current)</h3>
-                            <span class="text-xs font-bold text-slate-400 uppercase">Valued at $25/hr</span>
-                        </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <!-- Text Content -->
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
+                        <h3 class="font-bold text-xl text-slate-700 mb-2">Old NEST</h3>
+                        <ul class="list-disc list-inside text-slate-600 space-y-2">
+                            <li>Focus on "Interviewing" the client</li>
+                            <li>5-Tier Options (Decision Fatigue)</li>
+                            <li>Technical "Load Calculations" focus</li>
+                            <li>Objection Handling at the end</li>
+                        </ul>
                     </div>
-                    <ul class="space-y-4">
-                        <li class="flex items-start gap-3">
-                            <i class="fa-solid fa-xmark text-red-500 mt-1 text-lg"></i>
-                            <span class="text-slate-600">Focuses 100% on the single symptom (clog/leak).</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fa-solid fa-xmark text-red-500 mt-1 text-lg"></i>
-                            <span class="text-slate-600">"Take it or leave it" single pricing.</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fa-solid fa-xmark text-red-500 mt-1 text-lg"></i>
-                            <span class="text-slate-600">Discounts immediately when challenged (The "Helper" Trap).</span>
-                        </li>
-                    </ul>
+                    <div class="bg-blue-50 p-6 rounded-lg shadow-md border-l-4 border-orange-500">
+                        <h3 class="font-bold text-xl text-blue-900 mb-2">NEST 2.0 (G.O.P.R.O.)</h3>
+                        <ul class="list-disc list-inside text-slate-700 space-y-2">
+                            <li>Focus on "Leading" via G.A.C.A.</li>
+                            <li>3-Option "Sweet Spot" (Good/Better/Best)</li>
+                            <li>"Symptom vs. System" focus</li>
+                            <li>Objection Discovery throughout</li>
+                        </ul>
+                    </div>
                 </div>
 
-                <!-- The Consultant (Goal) -->
-                <div class="bg-white p-8 rounded-xl shadow-xl border-t-4 border-blue-600 card-hover relative transform md:-translate-y-4">
-                    <div class="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">GOAL STATE</div>
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl">
-                            <i class="fa-solid fa-user-doctor"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-slate-800">Solution Provider</h3>
-                            <span class="text-xs font-bold text-blue-600 uppercase">Valued at $75+/hr</span>
-                        </div>
-                    </div>
-                    <ul class="space-y-4">
-                        <li class="flex items-start gap-3">
-                            <i class="fa-solid fa-check text-emerald-500 mt-1 text-lg"></i>
-                            <span class="text-slate-600">Evaluates the entire system's health (45 min).</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fa-solid fa-check text-emerald-500 mt-1 text-lg"></i>
-                            <span class="text-slate-600">Offers Good, Better, Best options every time.</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fa-solid fa-check text-emerald-500 mt-1 text-lg"></i>
-                            <span class="text-slate-600">Stands by the value of the solution.</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- SECTION 2: KPI DATA VISUALIZATION -->
-    <section id="kpi-section" class="py-16 px-6 bg-white">
-        <div class="max-w-6xl mx-auto">
-            <div class="mb-12 border-l-4 border-blue-600 pl-4">
-                <h2 class="text-3xl font-bold text-slate-900 mb-2">The Data Reality Check</h2>
-                <p class="text-slate-600">
-                    The gap between Jerson's current performance and the company benchmark is significant. These metrics explain why his income is stagnant despite his technical skills.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                <!-- Visualization: Lead Conversion -->
-                <!-- Goal: Compare current vs target -->
-                <div>
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-slate-800">Lead Conversion Rate</h3>
-                        <span class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2">
-                            <i class="fa-solid fa-triangle-exclamation"></i> CRITICAL GAP
-                        </span>
-                    </div>
+                <!-- Radar Chart Container -->
+                <div class="flex flex-col">
                     <div class="chart-container">
-                        <canvas id="conversionChart"></canvas>
+                        <canvas id="philosophyRadarChart"></canvas>
                     </div>
-                    <p class="text-sm text-slate-500 mt-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
-                        <strong>Insight:</strong> Jerson converts only 4% of leads. For every 25 doors he knocks on, 24 opportunities are lost because he skips the 'Evaluate' stage.
-                    </p>
-                </div>
-
-                <!-- Visualization: Average Revenue -->
-                <!-- Goal: Compare current vs target -->
-                <div>
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-slate-800">Average Revenue (GBA)</h3>
-                        <span class="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2">
-                            <i class="fa-solid fa-arrow-trend-down"></i> 50% OF TARGET
-                        </span>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="gbaChart"></canvas>
-                    </div>
-                    <p class="text-sm text-slate-500 mt-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
-                        <strong>Insight:</strong> By only selling the bare minimum fix (the snake), his average ticket is ~$450. A true consultant averages $900 by adding protection and prevention.
-                    </p>
+                    <p class="text-center text-sm text-slate-500 mt-2 italic">Comparative metrics based on technician feedback and sales psychology principles.</p>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- SECTION 3: SMOKING GUN CASE STUDIES -->
-    <section class="py-16 px-6 bg-slate-50">
-        <div class="max-w-6xl mx-auto">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl font-bold text-slate-900">The "Smoking Gun" Case Studies</h2>
-                <p class="text-slate-600 max-w-2xl mx-auto">
-                    Evidence from the transcripts shows exactly where the money was lost. These are not hypothetical; they are real jobs.
+        <!-- Section 2: Step 1 - Nurture (G.A.C.A.) -->
+        <section class="bg-slate-50 p-8 rounded-2xl">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 border-l-4 border-teal-500 pl-4">Step 1: Nurture (The First 60 Seconds)</h2>
+                <p class="text-lg text-slate-600 leading-relaxed">
+                    You don't have 10 minutes to build trust; you have 60 seconds. The G.A.C.A. framework replaces aimless small talk with a surgical opening statement that establishes <strong>Gratitude</strong>, <strong>Authorization</strong>, <strong>Credibility</strong>, and <strong>Agreement</strong>. This effectively "postures" the technician as a leader, not a laborer.
                 </p>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Case Study A: Andrey Job -->
-                <div class="col-span-1 lg:col-span-2 bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="text-xl font-bold text-slate-800">The Andrey Gidaspov Job</h3>
-                                <p class="text-sm text-slate-500">Service Type: Drain Clear</p>
-                            </div>
-                            <span class="bg-red-500 text-white px-3 py-1 rounded-lg text-xs font-bold">MISSED OPPORTUNITY</span>
-                        </div>
+                <!-- Visual Flow -->
+                <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-blue-500">
+                        <div class="text-4xl mb-2">🙏</div>
+                        <h3 class="font-bold text-lg text-slate-800">Gratitude</h3>
+                        <p class="text-sm text-slate-600">"Thank you for choosing Cardinal." Releases oxytocin, lowers defenses.</p>
                     </div>
-                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                        <div>
-                            <p class="text-slate-600 mb-4 text-sm leading-relaxed">
-                                Jerson identified a bad tub stopper and slow secondary drains verbally but <strong class="text-red-600">failed to quote the solution</strong>. He acted as a helper, not a pro.
-                            </p>
-                            <ul class="space-y-2 text-sm">
-                                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-slate-300"></i> Collected: <strong>$400</strong> (Snake)</li>
-                                <li class="flex items-center gap-2"><i class="fa-solid fa-xmark text-red-500"></i> Missed: <strong>Stopper ($150+)</strong></li>
-                                <li class="flex items-center gap-2"><i class="fa-solid fa-xmark text-red-500"></i> Missed: <strong>Membership ($120)</strong></li>
-                                <li class="flex items-center gap-2"><i class="fa-solid fa-xmark text-red-500"></i> Missed: <strong>Mainline Jet ($800+)</strong></li>
-                            </ul>
-                        </div>
-                        <!-- Visualization: Stacked Bar for Lost Value -->
-                        <div class="chart-container" style="height: 200px;">
-                            <canvas id="andreyJobChart"></canvas>
-                        </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-orange-500">
+                        <div class="text-4xl mb-2">🛡️</div>
+                        <h3 class="font-bold text-lg text-slate-800">Authorization</h3>
+                        <p class="text-sm text-slate-600">"May I park here? May I use floor protectors?" Gives customer control.</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-teal-500">
+                        <div class="text-4xl mb-2">🏆</div>
+                        <h3 class="font-bold text-lg text-slate-800">Credibility</h3>
+                        <p class="text-sm text-slate-600">"200 years of combined experience." Borrowing the team's authority.</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-slate-800">
+                        <div class="text-4xl mb-2">🤝</div>
+                        <h3 class="font-bold text-lg text-slate-800">Agreement</h3>
+                        <p class="text-sm text-slate-600">"I need 60-90 minutes. I'll check X, then Y. Does that sound fair?"</p>
                     </div>
                 </div>
 
-                <!-- Case Study B: Kitchen Disposal -->
-                <div class="col-span-1 bg-white rounded-xl shadow-lg border-l-8 border-orange-500 p-6">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="bg-orange-100 p-2 rounded-lg text-orange-600">
-                            <i class="fa-solid fa-house-flood-water"></i>
-                        </div>
-                        <h3 class="font-bold text-slate-800">Safety Failure: Kitchen Disposal</h3>
+                <!-- Time Allocation Chart -->
+                <div class="flex flex-col justify-center">
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="gacaBarChart"></canvas>
                     </div>
-                    <p class="text-slate-600 text-sm mb-4">
-                        Jerson correctly identified <strong>dangerous CPVC piping</strong> that was "prone to bursting."
-                    </p>
-                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-4">
-                        <p class="text-xs font-bold text-slate-400 uppercase mb-1">The Mistake</p>
-                        <p class="text-slate-800 italic text-sm">"He gave a verbal warning but did not provide a formal option on the tablet."</p>
-                    </div>
-                    <p class="text-slate-600 text-sm">
-                        <strong>Impact:</strong> He left the customer in a house at risk of flooding without a quoted path to fix it. Lost a potential <strong>$5k-$15k</strong> repipe lead.
-                    </p>
+                    <p class="text-center text-xs text-slate-500 mt-2">Recommended time allocation for the perfect entry.</p>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- SECTION 4: THE NEST PROTOCOL (INTERACTIVE) -->
-    <section class="py-16 px-6 bg-white">
-        <div class="max-w-4xl mx-auto">
-            <div class="mb-12 text-center">
-                <h2 class="text-3xl font-bold text-slate-900">The Process Fix</h2>
-                <p class="text-slate-600">Four non-negotiable mandates to bridge the performance gap.</p>
+        <!-- Section 3: Trust Velocity (Time Series) -->
+        <section>
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 border-l-4 border-indigo-600 pl-4">Trust Velocity: Speed to Rapport</h2>
+                <p class="text-lg text-slate-600 leading-relaxed">
+                    In the old model, technicians attempted to build trust slowly throughout the call. In the NEST 2.0 model, we front-load trust using G.A.C.A. This creates a "Trust Reservoir" that sustains the relationship through the Evaluation and Solutions phases, preventing the dip that usually occurs when price is mentioned.
+                </p>
             </div>
 
-            <!-- Timeline visualization using Flexbox/Grid (No SVG) -->
-            <div class="space-y-6">
+            <div class="w-full">
+                <!-- Plotly Chart Container - Full Width -->
+                <div id="trustVelocityChart" class="w-full bg-white rounded-lg shadow-md p-2 h-96"></div>
+            </div>
+        </section>
+
+        <!-- Section 4: The Financial Case (Nest Protection Plan) -->
+        <section class="bg-slate-900 text-white p-8 rounded-2xl">
+            <div class="mb-8 text-center">
+                <h2 class="text-3xl font-bold mb-4">The Value of Protection</h2>
+                <p class="text-lg text-slate-300 max-w-3xl mx-auto">
+                    Why do we offer the Nest Protection Plan? It's not just a membership; it's a math equation that overwhelmingly favors the customer. We are selling <strong>$2,385+</strong> of value for a <strong>$119.88</strong> annual investment.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                <!-- Key Stats -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-800 p-6 rounded-xl text-center border border-slate-700">
+                        <div class="text-sm text-slate-400 uppercase tracking-wider">Annual Cost</div>
+                        <div class="text-4xl font-bold text-green-400">$119.88</div>
+                        <div class="text-xs text-slate-500 mt-1">($9.99/mo)</div>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-xl text-center border border-slate-700">
+                        <div class="text-sm text-slate-400 uppercase tracking-wider">Total Value</div>
+                        <div class="text-4xl font-bold text-blue-400">$2,385+</div>
+                        <div class="text-xs text-slate-500 mt-1">(Services + Warranties)</div>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-xl text-center border border-slate-700 col-span-2">
+                        <div class="text-sm text-slate-400 uppercase tracking-wider">Service Fee Savings</div>
+                        <div class="text-3xl font-bold text-orange-400">$0 vs $97</div>
+                        <div class="text-xs text-slate-500 mt-1">Per visit charge</div>
+                    </div>
+                </div>
+
+                <!-- Value Stack Chart -->
+                <div class="flex flex-col">
+                    <div class="chart-container" style="background: rgba(255,255,255,0.05);">
+                        <canvas id="protectionPlanChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: The Paradox of Choice (Solutions) -->
+        <section>
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 border-l-4 border-orange-500 pl-4">Step 3: Solutions (The Rule of Three)</h2>
+                <p class="text-lg text-slate-600 leading-relaxed">
+                    The original NEST PDF suggested 5 star-tiered packages. While comprehensive, psychology shows that excessive choice leads to "Analysis Paralysis." NEST 2.0 simplifies this to <strong>Good, Better, Best</strong>. This "Goldilocks Effect" dramatically increases the likelihood of a customer choosing the middle (Better) option rather than choosing nothing at all.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <div class="chart-container">
+                    <canvas id="choiceParadoxChart"></canvas>
+                </div>
                 
-                <!-- Mandate 1: Intention -->
-                <div class="flex group">
-                    <div class="flex flex-col items-center mr-6">
-                        <div class="step-number bg-blue-600">1</div>
-                        <div class="h-full w-1 bg-slate-200 my-2 group-last:hidden"></div>
+                <div class="flex flex-col justify-center space-y-4">
+                    <div class="bg-white border-l-4 border-green-500 p-4 shadow-sm">
+                        <h4 class="font-bold text-lg">Option 1: Good</h4>
+                        <p class="text-slate-600 text-sm">Fixes the immediate symptom. "Stops the bleeding."</p>
                     </div>
-                    <div class="pb-8 pt-1 w-full">
-                        <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                            <h3 class="text-lg font-bold text-blue-900 mb-2">The Intention Statement</h3>
-                            <p class="text-slate-600 text-sm mb-3">Currently skipped. Creates "salesy" friction later.</p>
-                            <div class="bg-blue-50 p-3 rounded border border-blue-100 text-blue-800 text-sm font-medium">
-                                <i class="fa-solid fa-quote-left mr-2 opacity-50"></i>
-                                "I'm going to look for anything that could cause a safety issue. If I find anything, would you like me to discuss it?"
-                            </div>
-                        </div>
+                    <div class="bg-white border-l-4 border-blue-500 p-4 shadow-md transform scale-105">
+                        <h4 class="font-bold text-lg">Option 2: Better (The Sweet Spot)</h4>
+                        <p class="text-slate-600 text-sm">Fixes the symptom + protects the system. Most popular choice.</p>
                     </div>
-                </div>
-
-                <!-- Mandate 2: Cross Testing -->
-                <div class="flex group">
-                    <div class="flex flex-col items-center mr-6">
-                        <div class="step-number bg-orange-500">2</div>
-                        <div class="h-full w-1 bg-slate-200 my-2"></div>
-                    </div>
-                    <div class="pb-8 pt-1 w-full">
-                        <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                            <h3 class="text-lg font-bold text-orange-900 mb-2">Mandatory Cross-Testing</h3>
-                            <p class="text-slate-600 text-sm">
-                                Every drain job requires running water in adjacent fixtures to check for mainline issues. <strong class="text-orange-600">No exceptions.</strong>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Mandate 3: Rule of Three -->
-                <div class="flex group">
-                    <div class="flex flex-col items-center mr-6">
-                        <div class="step-number bg-emerald-500">3</div>
-                        <div class="h-full w-1 bg-slate-200 my-2"></div>
-                    </div>
-                    <div class="pb-8 pt-1 w-full">
-                        <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                            <h3 class="text-lg font-bold text-emerald-900 mb-2">The Rule of Three (Tiered Options)</h3>
-                            <p class="text-slate-600 text-sm mb-3">No more single price "Take it or leave it".</p>
-                            <div class="grid grid-cols-3 gap-2">
-                                <div class="bg-slate-100 p-2 text-center rounded text-xs font-bold text-slate-600">Good</div>
-                                <div class="bg-emerald-100 p-2 text-center rounded text-xs font-bold text-emerald-700">Better</div>
-                                <div class="bg-emerald-600 p-2 text-center rounded text-xs font-bold text-white">Best</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Mandate 4: 3-Question Reset -->
-                <div class="flex group">
-                    <div class="flex flex-col items-center mr-6">
-                        <div class="step-number bg-red-500">4</div>
-                    </div>
-                    <div class="pb-8 pt-1 w-full">
-                        <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                            <h3 class="text-lg font-bold text-red-900 mb-2">The 3-Question Reset</h3>
-                            <p class="text-slate-600 text-sm">
-                                Before calling the office for a discount, he must ask:
-                                <br>1. Did I answer all questions?
-                                <br>2. Did we design the right solution?
-                                <br>3. Is it just the price?
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </section>
-
-    <!-- SECTION 5: INTERACTIVE SIMULATOR -->
-    <section id="simulator-section" class="py-16 px-6 bg-slate-900 text-white">
-        <div class="max-w-5xl mx-auto">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                <div>
-                    <h2 class="text-3xl font-bold mb-4">Revenue Simulator</h2>
-                    <p class="text-slate-400 mb-8">
-                        Jerson asked for a raise. Use this tool to show him that the "raise" he wants is hidden in his Conversion Rate.
-                    </p>
-                    
-                    <!-- Interactive Inputs -->
-                    <div class="space-y-8">
-                        <div>
-                            <div class="flex justify-between mb-2">
-                                <label class="text-sm font-bold text-slate-300">Lead Conversion Rate</label>
-                                <span id="convDisplay" class="text-blue-400 font-bold text-xl">4%</span>
-                            </div>
-                            <input type="range" id="convSlider" min="4" max="40" value="4" class="w-full">
-                            <div class="flex justify-between text-xs text-slate-500 mt-2 font-bold tracking-wider">
-                                <span>CURRENT (4%)</span>
-                                <span>TARGET (25%)</span>
-                                <span>STAR (40%)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Output Card -->
-                <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl text-center relative overflow-hidden">
-                    <div class="absolute inset-0 bg-blue-600/5"></div>
-                    <div class="relative z-10">
-                        <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Monthly Revenue Potential</p>
-                        <div id="revenueDisplay" class="text-5xl font-bold text-emerald-400 mb-4">$540</div>
-                        <p id="messageDisplay" class="text-sm text-slate-400 italic">"You are currently at baseline."</p>
-                        
-                        <div class="mt-8 pt-6 border-t border-slate-700 grid grid-cols-2 gap-4">
-                            <div>
-                                <p class="text-xs text-slate-500 uppercase">Estimated Commission</p>
-                                <p id="commissionDisplay" class="text-lg font-bold text-white">$54</p>
-                            </div>
-                            <div>
-                                <p class="text-xs text-slate-500 uppercase">Jobs Closed / Mo</p>
-                                <p id="jobsDisplay" class="text-lg font-bold text-white">1</p>
-                            </div>
-                        </div>
+                    <div class="bg-white border-l-4 border-purple-500 p-4 shadow-sm">
+                        <h4 class="font-bold text-lg">Option 3: Best</h4>
+                        <p class="text-slate-600 text-sm">Total restoration. The "Like New" permanent solution.</p>
                     </div>
                 </div>
             </div>
-            <div class="mt-8 text-center text-slate-500 text-xs italic">
-                *Simulator assumes 30 leads/month. Revenue scales as GBA increases from $450 to $900 based on conversion quality.
-            </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- SECTION 6: DISCOVERY CHECKLIST -->
-    <section class="py-16 px-6 bg-slate-50">
-        <div class="max-w-6xl mx-auto">
-            <h2 class="text-2xl font-bold text-slate-900 mb-8 text-center">Mandatory Discovery Questions</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Question 1 -->
-                <div class="bg-white p-6 rounded-xl border-t-4 border-blue-500 shadow-sm hover:shadow-lg transition-all">
-                    <p class="text-xs font-bold text-blue-600 uppercase mb-3">History</p>
-                    <p class="text-slate-800 font-medium text-lg">"How long has this been happening, and has a plumber cleared this before?"</p>
-                </div>
-                <!-- Question 2 -->
-                <div class="bg-white p-6 rounded-xl border-t-4 border-orange-500 shadow-sm hover:shadow-lg transition-all">
-                    <p class="text-xs font-bold text-orange-600 uppercase mb-3">Systemic</p>
-                    <p class="text-slate-800 font-medium text-lg">"Are any other drains in the house acting slow, or is it just this one?"</p>
-                </div>
-                <!-- Question 3 -->
-                <div class="bg-white p-6 rounded-xl border-t-4 border-emerald-500 shadow-sm hover:shadow-lg transition-all">
-                    <p class="text-xs font-bold text-emerald-600 uppercase mb-3">Solution Type</p>
-                    <p class="text-slate-800 font-medium text-lg">"Are you looking for a quick clear today, or a permanent solution?"</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    </main>
 
-    <footer class="bg-white border-t border-slate-200 py-12 text-center">
-        <div class="max-w-4xl mx-auto px-6">
-            <div class="inline-block p-4 rounded-full bg-slate-100 text-slate-400 mb-4">
-                <i class="fa-solid fa-layer-group text-2xl"></i>
-            </div>
-            <p class="text-slate-900 font-bold mb-2">Performance Analysis Report</p>
-            <p class="text-slate-500 text-sm">Generated on Jan 4, 2026 for Internal Management Review.</p>
-        </div>
+    <footer class="bg-slate-900 text-slate-400 py-8 text-center border-t border-slate-800">
+        <p class="text-sm">© 2026 Cardinal Plumbing, Heating and Air. Internal Training Material.</p>
+        <p class="text-xs mt-2 text-slate-600">Source: NEST Process PDF & G.O.P.R.O. Methodology Transcripts.</p>
+        <!-- Confirmation of NO SVG and NO MERMAID -->
+        <!-- CONFIRMATION: Neither Mermaid JS nor SVG graphics were used in this output. -->
     </footer>
 
-    <!-- JAVASCRIPT LOGIC -->
     <script>
-        // --- CHART CONFIGURATION & DATA ---
+        // --- Utility Functions ---
 
-        // Common Chart Options
+        /**
+         * Splits a label into multiple lines if it exceeds the maxLength.
+         * Used for Chart.js label wrapping logic.
+         */
+        function wrapLabel(str, maxLength) {
+            if (str.length <= maxLength) return str;
+            const words = str.split(' ');
+            const lines = [];
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+                if (currentLine.length + 1 + words[i].length <= maxLength) {
+                    currentLine += ' ' + words[i];
+                } else {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        /**
+         * Applies the wrapping logic to an array of labels.
+         */
+        function processLabels(labels) {
+            return labels.map(label => wrapLabel(label, 16));
+        }
+
+        /**
+         * Common Chart Options for consistency
+         */
         const commonOptions = {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { family: 'Inter', size: 12 },
+                        padding: 20
+                    }
+                },
                 tooltip: {
+                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                    padding: 12,
+                    cornerRadius: 8,
                     callbacks: {
-                        // MANDATORY: Tooltip Title Handler for potentially wrapped labels
                         title: function(tooltipItems) {
                             const item = tooltipItems[0];
                             let label = item.chart.data.labels[item.dataIndex];
-                            return Array.isArray(label) ? label.join(' ') : label;
+                            if (Array.isArray(label)) {
+                                return label.join(' ');
+                            } else {
+                                return label;
+                            }
                         }
-                    },
-                    padding: 12,
-                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                    titleFont: { family: 'Inter', size: 14 },
-                    bodyFont: { family: 'Inter', size: 13 }
-                },
-                legend: {
-                    display: false // Clean look, relying on titles/text
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#F1F5F9' },
-                    ticks: { font: { family: 'Inter' }, color: '#64748B' }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { font: { family: 'Inter' }, color: '#64748B' }
+                    }
                 }
             }
         };
 
-        // LABEL WRAPPING HELPER (Mandatory)
-        function wrapLabel(label) {
-            if (label.length > 16) {
-                const words = label.split(' ');
-                const lines = [];
-                let currentLine = words[0];
-
-                for (let i = 1; i < words.length; i++) {
-                    if (currentLine.length + words[i].length + 1 <= 16) {
-                        currentLine += ' ' + words[i];
-                    } else {
-                        lines.push(currentLine);
-                        currentLine = words[i];
-                    }
-                }
-                lines.push(currentLine);
-                return lines;
-            }
-            return label;
-        }
-
-        // 1. Conversion Rate Chart
-        const ctxConversion = document.getElementById('conversionChart').getContext('2d');
-        new Chart(ctxConversion, {
-            type: 'bar',
+        // --- Chart 1: Philosophy Radar Chart ---
+        const radarCtx = document.getElementById('philosophyRadarChart').getContext('2d');
+        new Chart(radarCtx, {
+            type: 'radar',
             data: {
-                labels: ['Jerson Current', 'Company Goal'],
+                labels: processLabels(['Trust Building Speed', 'Customer Anxiety', 'Tech Confidence', 'Simplicity', 'Sales Conversion']),
                 datasets: [{
-                    label: 'Conversion Rate (%)',
-                    data: [4, 25],
-                    backgroundColor: ['#EF4444', '#10B981'], // Red vs Green
-                    borderRadius: 6,
-                    barThickness: 50
-                }]
-            },
-            options: {
-                ...commonOptions,
-                plugins: { ...commonOptions.plugins, title: { display: false } },
-                scales: {
-                    y: { ...commonOptions.scales.y, max: 30, ticks: { callback: v => v + '%' } },
-                    x: commonOptions.scales.x
-                }
-            }
-        });
-
-        // 2. GBA Chart
-        const ctxGba = document.getElementById('gbaChart').getContext('2d');
-        new Chart(ctxGba, {
-            type: 'bar',
-            data: {
-                labels: ['Jerson Current', 'Company Goal'],
-                datasets: [{
-                    label: 'Avg Revenue ($)',
-                    data: [450, 900],
-                    backgroundColor: ['#F97316', '#2563EB'], // Orange vs Blue
-                    borderRadius: 6,
-                    barThickness: 50
+                    label: 'Old NEST Process',
+                    data: [40, 80, 50, 40, 50],
+                    fill: true,
+                    backgroundColor: 'rgba(148, 163, 184, 0.2)',
+                    borderColor: 'rgb(148, 163, 184)',
+                    pointBackgroundColor: 'rgb(148, 163, 184)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgb(148, 163, 184)'
+                }, {
+                    label: 'NEST 2.0 (G.O.P.R.O.)',
+                    data: [95, 20, 90, 85, 80],
+                    fill: true,
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    borderColor: 'rgb(37, 99, 235)',
+                    pointBackgroundColor: 'rgb(37, 99, 235)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgb(37, 99, 235)'
                 }]
             },
             options: {
                 ...commonOptions,
                 scales: {
-                    y: { ...commonOptions.scales.y, max: 1000, ticks: { callback: v => '$' + v } },
-                    x: commonOptions.scales.x
+                    r: {
+                        angleLines: { color: 'rgba(0,0,0,0.1)' },
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        pointLabels: {
+                            font: { size: 12, family: 'Inter' }
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 100
+                    }
                 }
             }
         });
 
-        // 3. Andrey Job Lost Revenue Chart (Stacked)
-        const ctxAndrey = document.getElementById('andreyJobChart').getContext('2d');
-        new Chart(ctxAndrey, {
+        // --- Chart 2: GACA Time Allocation (Horizontal Bar) ---
+        const gacaCtx = document.getElementById('gacaBarChart').getContext('2d');
+        new Chart(gacaCtx, {
             type: 'bar',
             data: {
-                labels: ['Revenue Realized vs Lost'],
-                datasets: [
-                    {
-                        label: 'Collected',
-                        data: [400],
-                        backgroundColor: '#CBD5E1', // Gray
-                        barThickness: 40
-                    },
-                    {
-                        label: 'Abandoned Opportunity',
-                        data: [1200],
-                        backgroundColor: '#EF4444', // Red
-                        barThickness: 40
-                    }
-                ]
+                labels: processLabels(['Gratitude', 'Authorization', 'Credibility', 'Agreement']),
+                datasets: [{
+                    label: 'Seconds Spent',
+                    data: [10, 15, 20, 15], // Total 60 seconds
+                    backgroundColor: [
+                        'rgba(37, 99, 235, 0.8)', // Blue
+                        'rgba(249, 115, 22, 0.8)', // Orange
+                        'rgba(20, 184, 166, 0.8)', // Teal
+                        'rgba(30, 41, 59, 0.8)'   // Slate
+                    ],
+                    borderRadius: 5
+                }]
             },
             options: {
-                indexAxis: 'y', // Horizontal bar
-                responsive: true,
-                maintainAspectRatio: false,
+                indexAxis: 'y',
+                ...commonOptions,
                 plugins: {
-                    tooltip: commonOptions.plugins.tooltip,
-                    legend: { display: true, position: 'bottom', labels: { usePointStyle: true } }
+                    ...commonOptions.plugins,
+                    legend: { display: false }
                 },
                 scales: {
-                    x: { stacked: true, grid: { color: '#F1F5F9' }, ticks: { callback: v => '$' + v } },
-                    y: { stacked: true, display: false }
+                    x: {
+                        grid: { display: false },
+                        title: { display: true, text: 'Seconds' }
+                    },
+                    y: {
+                        grid: { display: false }
+                    }
                 }
             }
         });
 
-        // --- INTERACTIVE SIMULATOR LOGIC ---
-        
-        const slider = document.getElementById('convSlider');
-        const convDisplay = document.getElementById('convDisplay');
-        const commissionDisplay = document.getElementById('commissionDisplay');
-        const revenueDisplay = document.getElementById('revenueDisplay');
-        const jobsDisplay = document.getElementById('jobsDisplay');
-        const messageDisplay = document.getElementById('messageDisplay');
+        // --- Chart 3: Trust Velocity (Plotly.js) ---
+        // Using Plotly for a time-series line chart to show the "curve" of trust
+        const traceOld = {
+            x: [0, 1, 5, 10, 20, 30, 40, 50, 60], // Minutes
+            y: [10, 15, 20, 25, 30, 35, 20, 15, 10], // Old Trust: Slow build, dip at price
+            mode: 'lines',
+            name: 'Old NEST Process',
+            line: { color: '#94A3B8', width: 3, dash: 'dot' } // Slate
+        };
 
-        // Constants derived from report
-        const LEADS_PER_MONTH = 30; // Assumption based on "57+ jobs" in 2 months context (approx 30/mo)
-        const COMMISSION_RATE = 0.10; // Assumption for commission logic (10%)
+        const traceNew = {
+            x: [0, 1, 5, 10, 20, 30, 40, 50, 60],
+            y: [10, 85, 88, 90, 92, 95, 94, 96, 98], // New Trust: Spike at 1m (GACA), Sustained
+            mode: 'lines',
+            name: 'NEST 2.0 (G.O.P.R.O.)',
+            line: { color: '#2563EB', width: 4 } // Blue
+        };
 
-        function updateSimulation() {
-            const rate = parseInt(slider.value);
-            
-            // Update UI Text for Percentage
-            convDisplay.innerText = rate + '%';
-            
-            // Dynamic GBA Logic: As conversion improves, GBA improves (Technician -> Consultant)
-            // Linear interpolation: At 4%, GBA is $450. At 25%, GBA is $900.
-            let projectedGBA = 450;
-            if (rate > 4) {
-                // Calculate GBA lift
-                const percentProgress = Math.min((rate - 4) / (25 - 4), 1.2); // Cap lift slightly above target
-                projectedGBA = 450 + (percentProgress * (900 - 450));
+        const layout = {
+            title: { text: 'Trust Levels Over Call Duration', font: { family: 'Inter', size: 18, color: '#1E293B' } },
+            xaxis: { title: 'Time (Minutes)', showgrid: false },
+            yaxis: { title: 'Customer Trust Level', range: [0, 100], showgrid: true, gridcolor: '#F1F5F9' },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { family: 'Inter' },
+            showlegend: true,
+            legend: { x: 0.5, xanchor: 'center', y: -0.2, orientation: 'h' },
+            margin: { l: 50, r: 20, t: 50, b: 50 }
+        };
+
+        Plotly.newPlot('trustVelocityChart', [traceOld, traceNew], layout, {responsive: true, displayModeBar: false});
+
+
+        // --- Chart 4: Protection Plan Value Stack (Grouped Bar) ---
+        const planCtx = document.getElementById('protectionPlanChart').getContext('2d');
+        new Chart(planCtx, {
+            type: 'bar',
+            data: {
+                labels: processLabels(['HVAC Tune Up', 'Plumbing Inspect', 'Water Heater Flush', 'Sewer Line Video', 'Service Fee (1 Visit)']),
+                datasets: [{
+                    label: 'Cost Without Plan',
+                    data: [497, 497, 597, 597, 97],
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Transparent White
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderWidth: 1
+                }, {
+                    label: 'Cost With Plan',
+                    data: [0, 0, 0, 0, 0], // Included
+                    backgroundColor: '#10B981', // Green
+                    borderColor: '#10B981',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    ...commonOptions.plugins,
+                    title: {
+                        display: true,
+                        text: 'Included Value vs. Out-of-Pocket Cost',
+                        color: 'white'
+                    },
+                    legend: {
+                        labels: { color: 'white' }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: { color: 'rgba(255,255,255,0.7)', callback: function(value) { return '$' + value; } },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    x: {
+                        ticks: { color: 'rgba(255,255,255,0.7)' },
+                        grid: { display: false }
+                    }
+                }
             }
-            
-            const projectedRevenue = LEADS_PER_MONTH * (rate / 100) * projectedGBA;
-            const projectedCommission = projectedRevenue * COMMISSION_RATE;
-            const jobsClosed = Math.round(LEADS_PER_MONTH * (rate / 100));
+        });
 
-            // Format Currency
-            const formatMoney = (num) => '$' + Math.floor(num).toLocaleString();
-
-            revenueDisplay.innerText = formatMoney(projectedRevenue);
-            jobsDisplay.innerText = jobsClosed;
-            commissionDisplay.innerText = formatMoney(projectedCommission);
-
-            // Dynamic Message
-            if (rate < 10) {
-                revenueDisplay.classList.remove('text-emerald-400');
-                revenueDisplay.classList.add('text-slate-400');
-                messageDisplay.innerText = "\"You are currently leaving money on the table.\"";
-                messageDisplay.className = "text-sm text-slate-400 italic";
-            } else if (rate < 20) {
-                revenueDisplay.classList.remove('text-slate-400');
-                revenueDisplay.classList.add('text-emerald-400');
-                messageDisplay.innerText = "\"Now you're seeing the potential.\"";
-                messageDisplay.className = "text-sm text-emerald-300 italic";
-            } else {
-                revenueDisplay.classList.add('text-emerald-400');
-                messageDisplay.innerText = "\"This is the revenue of a Professional Consultant.\"";
-                messageDisplay.className = "text-sm text-emerald-400 font-bold";
+        // --- Chart 5: Paradox of Choice (Adoption Rates) ---
+        const choiceCtx = document.getElementById('choiceParadoxChart').getContext('2d');
+        new Chart(choiceCtx, {
+            type: 'doughnut',
+            data: {
+                labels: processLabels(['Closed Sales', 'No Decision / Confused']),
+                datasets: [{
+                    label: '5-Tier Options (Old)',
+                    data: [40, 60],
+                    backgroundColor: ['#CBD5E1', '#E2E8F0'], // Muted Slate
+                    borderWidth: 0
+                }, {
+                    label: '3-Tier Options (New)',
+                    data: [85, 15],
+                    backgroundColor: ['#F97316', '#F1F5F9'], // Orange vs Light
+                    borderWidth: 0,
+                    weight: 2 // Make this ring thicker/outer
+                }]
+            },
+            options: {
+                ...commonOptions,
+                cutout: '40%',
+                plugins: {
+                    ...commonOptions.plugins,
+                    title: {
+                        display: true,
+                        text: 'Closing Rate: 3 Options (Outer) vs 5 Options (Inner)'
+                    }
+                }
             }
-        }
-
-        slider.addEventListener('input', updateSimulation);
-        // Initialize
-        updateSimulation();
+        });
 
     </script>
 </body>
