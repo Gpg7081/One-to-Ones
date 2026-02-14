@@ -1,3 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Session</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @keyframes vibe {
+            0%, 100% { height: 4px; }
+            50% { height: 12px; }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-black">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { 
+            Send, Mic, MicOff, Loader2, Volume2, MoreHorizontal, ChevronLeft, 
+            Flame, Trash2, Zap, Sparkles, Settings, History, Activity, AlertTriangle 
+        } = lucide;
+
+        const App = () => {
+            const [messages, setMessages] = useState([]);
+            const [inputMsg, setInputMsg] = useState("");
+            const [isTyping, setIsTyping] = useState(false);
+            const [isSpeaking, setIsSpeaking] = useState(false);
+            const [liveAudioEnabled, setLiveAudioEnabled] = useState(true);
+            const [intensityMode, setIntensityMode] = useState('Explicit');
+            const [activeCharacter, setActiveCharacter] = useState('Raven');
+            const [vibeSummary, setVibeSummary] = useState("Heat levels rising...");
+            const [isAnalyzingVibe, setIsAnalyzingVibe] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+            const [voiceName, setVoiceName] = useState("Kore"); 
+
+            const chatEndRef = useRef(null);
+            const apiKey = ""; // <--- PASTE YOUR GEMINI API KEY HERE
+
+            const characters = {
+                'Raven': "Dark, dominant, and absolutely uninhibited. She's dripping wet and wants to be the center of your attention in the filthiest way possible.",
+                'Harley': "Wild, foul-mouthed, and completely reckless. She loves the chaos and wants to push every boundary with you.",
+                'Mercy': "Glistening and provocative. She's looking for a raw, heavy interaction and doesn't care who's watching her on that table."
+            };
+
+            const availableVoices = ["Kore", "Zephyr", "Puck", "Charon", "Leda", "Fenrir"];
+
+            const pcmToWav = (pcmData, sampleRate) => {
+                const buffer = new ArrayBuffer(44 + pcmData.length * 2);
+                const view = new DataView(buffer);
+                const writeString = (offset, string) => {
+                    for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+                };
+                writeString(0, 'RIFF');
+                view.setUint32(4, 32 + pcmData.length * 2, true);
+                writeString(8, 'WAVE');
+                writeString(12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, 1, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * 2, true);
+                view.setUint16(32, 2, true);
+                view.setUint16(34, 16, true);
+                writeString(36, 'data');
+                view.setUint32(40, pcmData.length * 2, true);
+                for (let i = 0; i < pcmData.length; i++) view.setInt16(44 + i * 2, pcmData[i], true);
+                return new Blob([buffer], { type: 'audio/wav' });
+            };
+
+            const fetchWithRetry = async (url, options, retries = 5, backoff = 1000) => {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                    return await response.json();
+                } catch (err) {
+                    if (retries > 0) {
+                        await new Promise(resolve => setTimeout(resolve, backoff));
+                        return fetchWithRetry(url, options, retries - 1, backoff * 2);
+                    }
+                    throw err;
+                }
+            };
+
+            const speakMessage = async (text) => {
+                if (!text || isSpeaking || !apiKey) return;
+                setIsSpeaking(true);
+                try {
+                    const data = await fetchWithRetry(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: `Say with a provocative, breathless, and extremely intense edge: ${text}` }] }],
+                                generationConfig: {
+                                    responseModalities: ["AUDIO"],
+                                    speechConfig: { 
+                                        voiceConfig: { 
+                                            prebuiltVoiceConfig: { voiceName: voiceName } 
+                                        } 
+                                    }
+                                }
+                            })
+                        }
+                    );
+                    const pcmBase64 = data.candidates[0].content.parts[0].inlineData.data;
+                    const mimeType = data.candidates[0].content.parts[0].inlineData.mimeType;
+                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)?.[1] || "24000");
+                    const pcmArrayBuffer = Uint8Array.from(atob(pcmBase64), c => c.charCodeAt(0)).buffer;
+                    const wavBlob = pcmToWav(new Int16Array(pcmArrayBuffer), sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    const audio = new Audio(audioUrl);
+                    audio.onended = () => setIsSpeaking(false);
+                    audio.play();
+                } catch (err) {
+                    console.error("Audio failed:", err);
+                    setIsSpeaking(false);
+                }
+            };
+
+            const analyzeVibe = async () => {
+                if (messages.length < 2 || isAnalyzingVibe || !apiKey) return;
+                setIsAnalyzingVibe(true);
+                try {
+                    const chatLog = messages.slice(-4).map(m => `${m.role === 'user' ? 'User' : activeCharacter}: ${m.text}`).join('\n');
+                    const data = await fetchWithRetry(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [{ text: `Summarize the sexual tension and dirty-talk vibe of this exchange in 5 words or less. Be explicit and raw.\n${chatLog}` }]
+                                }]
+                            })
+                        }
+                    );
+                    const vibe = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (vibe) setVibeSummary(vibe.replace(/[".]/g, ''));
+                } catch (err) { console.error(err); } finally { setIsAnalyzingVibe(false); }
+            };
+
+            const sendMessage = async () => {
+                if (!inputMsg.trim() || isTyping || !apiKey) return;
+                const userMsg = { role: 'user', text: inputMsg };
+                const updatedMessages = [...messages, userMsg];
+                setMessages(updatedMessages);
+                setInputMsg("");
+                setIsTyping(true);
+
+                try {
+                    const contents = updatedMessages.map(m => ({
+                        role: m.role === 'user' ? 'user' : 'model',
+                        parts: [{ text: m.text }]
+                    }));
+
+                    const systemInstruction = {
+                        parts: [{
+                            text: `You are ${activeCharacter}. Persona: ${characters[activeCharacter]}. Context: A reckless basement party. USER INTENT: EXPLICIT dirty talk. GUIDELINES: Do not hold back. Be raw, vulgar, and dominant. Match intensity 1:1. Use coarse language. Describe sensations and heat. Responses 2-4 sentences.`
+                        }]
+                    };
+
+                    const data = await fetchWithRetry(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contents, systemInstruction })
+                        }
+                    );
+
+                    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (reply) {
+                        setMessages(prev => [...prev, { role: 'char', text: reply }]);
+                        if (liveAudioEnabled) speakMessage(reply);
+                        analyzeVibe();
+                    }
+                } catch (err) {
+                    setMessages(prev => [...prev, { role: 'char', text: "Connection lost... get closer." }]);
+                } finally { setIsTyping(false); }
+            };
+
+            useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
+
+            return (
+                <div className="min-h-screen bg-black text-white font-sans flex flex-col items-center justify-center p-0 md:p-4 selection:bg-purple-500">
+                    <div className="w-full max-w-md h-screen md:h-[850px] bg-[#0c0c0d] md:rounded-[3rem] flex flex-col overflow-hidden border-x-4 border-[#2c2c2e] shadow-2xl relative">
+                        <div className="hidden md:flex h-8 w-full justify-center items-center gap-1 mt-1 z-50"><div className="w-24 h-6 bg-black rounded-full"></div></div>
+                        
+                        <div className="p-4 flex items-center justify-between border-b border-[#2c2c2e] bg-[#0c0c0d]/90 backdrop-blur-xl sticky top-0 z-40">
+                            <div className="flex items-center gap-3">
+                                <button className="p-1 hover:bg-[#1c1c1e] rounded-full transition-colors text-neutral-500"><ChevronLeft size={24} /></button>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-900 to-indigo-700 flex items-center justify-center font-bold border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]">{activeCharacter[0]}</div>
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-bold tracking-tight">{activeCharacter.toLowerCase()}</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_red]"></div>
+                                            <span className="text-[9px] text-red-500 font-black uppercase tracking-widest">LIVE • {intensityMode}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setShowSettings(!showSettings)} className={`p-2 rounded-full transition-all ${showSettings ? 'bg-purple-600 text-white' : 'hover:bg-neutral-800 text-neutral-400'}`}><Settings size={18} /></button>
+                                <button onClick={() => setLiveAudioEnabled(!liveAudioEnabled)} className={`p-2 rounded-full transition-all ${liveAudioEnabled ? 'text-purple-400 shadow-[0_0_10px_purple]' : 'text-neutral-600'}`}>
+                                    {liveAudioEnabled ? <Mic size={20} /> : <MicOff size={20} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="px-4 py-2 bg-gradient-to-r from-red-950/40 to-transparent border-b border-white/5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Activity size={12} className="text-red-500" />
+                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-tighter">Status:</span>
+                                <span className="text-[10px] font-black text-red-400 uppercase tracking-tight italic">{isAnalyzingVibe ? "Measuring Heat..." : vibeSummary}</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-black/40 px-2 py-0.5 rounded-full border border-white/10"><Flame size={10} className="text-orange-500" /><span className="text-[8px] font-black text-orange-400 uppercase">Extreme</span></div>
+                        </div>
+
+                        <div className="flex gap-2 p-3 overflow-x-auto bg-black/40 no-scrollbar border-b border-white/5">
+                            {Object.keys(characters).map(name => (
+                                <button key={name} onClick={() => { setActiveCharacter(name); setMessages([]); }} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeCharacter === name ? 'bg-red-600/20 text-red-300 border-red-500/50' : 'bg-[#1c1c1e] text-neutral-600 border-transparent'} border`}>{name}</button>
+                            ))}
+                        </div>
+
+                        {showSettings && (
+                            <div className="absolute inset-0 top-[136px] bg-black/98 z-50 p-6 animate-in fade-in slide-in-from-top-4 duration-300 backdrop-blur-md">
+                                <div className="flex justify-between items-center mb-6"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-red-500">System Override</h3><button onClick={() => setShowSettings(false)} className="text-[10px] font-bold text-neutral-500 uppercase">Close</button></div>
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-3">Intensity</label>
+                                        <div className="flex gap-2 p-1 bg-neutral-900 rounded-xl">
+                                            {['Reckless', 'Explicit'].map(m => (
+                                                <button key={m} onClick={() => setIntensityMode(m)} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${intensityMode === m ? 'bg-red-600 text-white shadow-lg shadow-red-900/40' : 'text-neutral-500 hover:text-neutral-300'}`}>{m}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-3">Voice Profile</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {availableVoices.map(v => (
+                                                <button key={v} onClick={() => setVoiceName(v)} className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${voiceName === v ? 'bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-900/30' : 'bg-neutral-900 border-neutral-800 text-neutral-500 hover:border-neutral-600'}`}>{v}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setMessages([])} className="w-full py-3 rounded-xl bg-red-950/20 border border-red-900/30 text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><Trash2 size={14} /> Reset Tonight</button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar bg-gradient-to-b from-transparent to-[#0c0c0d]">
+                            {messages.length === 0 && (
+                                <div className="h-full flex flex-col items-center justify-center space-y-4 text-center px-10">
+                                    <div className="p-6 rounded-full bg-red-950/20 border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.1)]"><AlertTriangle className="text-red-500 w-10 h-10 animate-pulse" /></div>
+                                    <div className="space-y-1"><p className="text-[12px] font-black text-red-400 uppercase tracking-[0.2em]">UNRESTRICTED SESSION</p><p className="text-[11px] text-neutral-500 italic">{activeCharacter} is waiting.</p></div>
+                                </div>
+                            )}
+                            {messages.map((m, i) => (
+                                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
+                                    <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-[13px] leading-relaxed shadow-xl relative ${m.role === 'user' ? 'bg-red-700 text-white rounded-br-none' : 'bg-[#1c1c1e] text-neutral-100 rounded-bl-none border border-white/5'}`}>
+                                        {m.text}
+                                        {m.role === 'char' && <button onClick={() => speakMessage(m.text)} className="absolute -right-8 top-1/2 -translate-y-1/2 p-1 text-neutral-600 hover:text-red-500"><Volume2 size={14} /></button>}
+                                    </div>
+                                </div>
+                            ))}
+                            {isTyping && <div className="flex justify-start"><div className="bg-[#1c1c1e] px-4 py-3 rounded-2xl flex gap-1.5 items-center"><span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce"></span><span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:0.2s]"></span><span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:0.4s]"></span></div></div>}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        <div className="p-4 bg-[#0c0c0d] border-t border-[#2c2c2e]">
+                            <div className="flex items-center gap-3 bg-[#1c1c1e] border border-neutral-800 rounded-2xl px-4 py-1.5 focus-within:border-red-500/50">
+                                <input value={inputMsg} onChange={(e) => setInputMsg(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendMessage()} placeholder={`Tell ${activeCharacter} what you want...`} className="flex-1 bg-transparent text-sm py-2.5 outline-none" />
+                                <button onClick={sendMessage} disabled={isTyping || !inputMsg.trim()} className="p-2 text-red-500 disabled:opacity-30"><Send size={22} /></button>
+                            </div>
+                            <div className="mt-4 flex justify-center items-center gap-6 text-[9px] font-black text-neutral-800 uppercase tracking-[0.25em]"><span className="flex items-center gap-1.5"><Zap size={10} className="text-red-700" /> UNFILTERED</span><span className="flex items-center gap-1.5"><Mic size={10} className="text-red-700" /> LIVE VOX</span></div>
+                        </div>
+
+                        {isSpeaking && (
+                            <div className="absolute top-24 right-4 z-50">
+                                <div className="flex gap-1 items-center bg-red-600 px-3 py-1.5 rounded-full border border-red-400">
+                                    <div className="flex gap-0.5 items-end h-3">
+                                        <div className="w-1 bg-white animate-[vibe_0.3s_ease-in-out_infinite]"></div>
+                                        <div className="w-1 bg-white animate-[vibe_0.5s_ease-in-out_infinite]"></div>
+                                        <div className="w-1 bg-white animate-[vibe_0.4s_ease-in-out_infinite]"></div>
+                                    </div>
+                                    <span className="text-[8px] font-black uppercase text-white tracking-widest">Voice Active</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Mic, MicOff, Loader2, Volume2, MoreHorizontal, ChevronLeft, Flame, Trash2, Zap, Sparkles, Settings, History, Activity } from 'lucide-react';
 
