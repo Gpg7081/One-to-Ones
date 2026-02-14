@@ -1,575 +1,439 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEST 2.0: The G.O.P.R.O. Evolution</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Plotly.js -->
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <!-- Font Awesome for Icons (using Unicode primarily, but good for fallback) -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <style>
-        /* Custom Font Import */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, Mic, MicOff, Loader2, Volume2, MoreHorizontal, ChevronLeft, Flame, Trash2, Zap, Sparkles, Settings, History, Activity } from 'lucide-react';
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F8FAFC;
-            color: #1E293B;
-        }
+const App = () => {
+  const [messages, setMessages] = useState([]);
+  const [inputMsg, setInputMsg] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [liveAudioEnabled, setLiveAudioEnabled] = useState(true);
+  const [activeCharacter, setActiveCharacter] = useState('Raven');
+  const [vibeSummary, setVibeSummary] = useState("Waiting for sparks...");
+  const [isAnalyzingVibe, setIsAnalyzingVibe] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [voiceName, setVoiceName] = useState("Kore"); // Default voice
 
-        /* Palette Definition 
-           Primary Blue: #2563EB
-           Vibrant Orange: #F97316
-           Trust Teal: #14B8A6
-           Dark Slate: #1E293B
-        */
+  const chatEndRef = useRef(null);
+  const apiKey = ""; // Runtime provided
 
-        /* Chart Container Styling - Strict Adherence to Requirements */
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 650px; /* Max width constraint */
-            margin-left: auto;
-            margin-right: auto;
-            height: 400px; /* Base height */
-            max-height: 450px;
-            background: white;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
+  const characters = {
+    'Raven': "Intense, dominant, currently soaking wet on a table at a basement party. Raw and provocative.",
+    'Harley': "Chaotic, high energy, laughing through the noise. Completely unhinged and reckless.",
+    'Mercy': "Seductive but gritty, feeling the heat of the crowd. Fully engrossed in the moment."
+  };
 
-        /* Responsive adjustments for chart height */
-        @media (max-width: 768px) {
-            .chart-container {
-                height: 300px;
-                max-height: 350px;
+  const availableVoices = ["Kore", "Zephyr", "Puck", "Charon", "Leda", "Fenrir"];
+
+  // Helper: Convert PCM 16-bit to WAV for playback
+  const pcmToWav = (pcmData, sampleRate) => {
+    const buffer = new ArrayBuffer(44 + pcmData.length * 2);
+    const view = new DataView(buffer);
+    const writeString = (offset, string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+    writeString(0, 'RIFF');
+    view.setUint32(4, 32 + pcmData.length * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, 1, true); // Mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, pcmData.length * 2, true);
+    for (let i = 0; i < pcmData.length; i++) {
+      view.setInt16(44 + i * 2, pcmData[i], true);
+    }
+    return new Blob([buffer], { type: 'audio/wav' });
+  };
+
+  const fetchWithRetry = async (url, options, retries = 5, backoff = 1000) => {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      return await response.json();
+    } catch (err) {
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, backoff));
+        return fetchWithRetry(url, options, retries - 1, backoff * 2);
+      }
+      throw err;
+    }
+  };
+
+  const speakMessage = async (text) => {
+    if (!text || isSpeaking) return;
+    setIsSpeaking(true);
+    try {
+      const data = await fetchWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Say with extreme intensity and a provocative, breathless edge: ${text}` }] }],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: { 
+                voiceConfig: { 
+                  prebuiltVoiceConfig: { voiceName: voiceName } 
+                } 
+              }
             }
+          })
         }
+      );
+      const pcmBase64 = data.candidates[0].content.parts[0].inlineData.data;
+      const mimeType = data.candidates[0].content.parts[0].inlineData.mimeType;
+      const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)?.[1] || "24000");
+      const pcmArrayBuffer = Uint8Array.from(atob(pcmBase64), c => c.charCodeAt(0)).buffer;
+      const wavBlob = pcmToWav(new Int16Array(pcmArrayBuffer), sampleRate);
+      const audioUrl = URL.createObjectURL(wavBlob);
+      const audio = new Audio(audioUrl);
+      audio.onended = () => setIsSpeaking(false);
+      audio.play();
+    } catch (err) {
+      console.error("Audio failed:", err);
+      setIsSpeaking(false);
+    }
+  };
 
-        .section-card {
-            background-color: white;
-            border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+  // ✨ Gemini Feature: Suggest Next Scene
+  const suggestScene = async () => {
+    if (isTyping) return;
+    setIsTyping(true);
+    try {
+      const chatLog = messages.map(m => `${m.role === 'user' ? 'User' : activeCharacter}: ${m.text}`).join('\n');
+      const data = await fetchWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: `Based on this roleplay history:\n${chatLog}\n\nSuggest a new, provocative, and reckless narrative twist to shift the scene. Describe it in 1-2 sentences of raw narration.` }]
+            }]
+          })
         }
+      );
+      const scene = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (scene) {
+        setMessages(prev => [...prev, { role: 'system', text: `✨ SCENE SHIFT: ${scene}` }]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
-        .section-card:hover {
-            transform: translateY(-2px);
+  // ✨ Gemini Feature: Vibe Radar
+  const analyzeVibe = async () => {
+    if (messages.length < 2 || isAnalyzingVibe) return;
+    setIsAnalyzingVibe(true);
+    try {
+      const chatLog = messages.slice(-4).map(m => `${m.role === 'user' ? 'User' : activeCharacter}: ${m.text}`).join('\n');
+      const data = await fetchWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: `Summarize the "reckless vibe" and sexual tension of this exchange in 5 words or less. Be gritty.\n${chatLog}` }]
+            }]
+          })
         }
+      );
+      const vibe = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (vibe) setVibeSummary(vibe.replace(/[".]/g, ''));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAnalyzingVibe(false);
+    }
+  };
 
-        .gradient-text {
-            background: linear-gradient(to right, #2563EB, #14B8A6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+  const sendMessage = async () => {
+    if (!inputMsg.trim() || isTyping) return;
+    const userMsg = { role: 'user', text: inputMsg };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    setInputMsg("");
+    setIsTyping(true);
 
-        /* HTML Flowchart Styles */
-        .flow-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 1rem;
-            border: 2px solid #E2E8F0;
-            border-radius: 0.75rem;
-            background-color: #F1F5F9;
-            width: 100%;
-            transition: all 0.3s;
-        }
-        .flow-step:hover {
-            border-color: #F97316;
-            background-color: #FFF7ED;
-        }
-        .flow-arrow {
-            font-size: 1.5rem;
-            color: #94A3B8;
-            margin: 0.5rem 0;
-        }
-        @media (min-width: 768px) {
-            .flow-arrow {
-                transform: rotate(-90deg);
-                margin: 0 1rem;
-            }
-        }
-    </style>
-    <!-- 
-        NO SVG USED.
-        NO MERMAID JS USED.
-        Palette: Vibrant Professional (Blue/Orange/Teal)
-    -->
-</head>
-<body class="antialiased">
+    try {
+      const contents = updatedMessages.filter(m => m.role !== 'system').map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
 
-    <!-- Hero Section -->
-    <header class="bg-slate-900 text-white pt-16 pb-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-7xl mx-auto text-center">
-            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-4">
-                <span class="text-blue-400">NEST</span> 2.0
-            </h1>
-            <p class="text-xl md:text-2xl text-slate-300 font-light max-w-3xl mx-auto">
-                The Evolution of Trade Service: Integrating <span class="text-orange-400 font-bold">G.O.P.R.O. Psychology</span> into the Cardinal Standard.
-            </p>
-            <div class="mt-8 flex justify-center gap-4">
-                <div class="bg-slate-800 px-6 py-2 rounded-full border border-slate-700">
-                    <span class="text-teal-400 font-bold">N</span>urture
-                </div>
-                <div class="bg-slate-800 px-6 py-2 rounded-full border border-slate-700">
-                    <span class="text-teal-400 font-bold">E</span>valuate
-                </div>
-                <div class="bg-slate-800 px-6 py-2 rounded-full border border-slate-700">
-                    <span class="text-teal-400 font-bold">S</span>olutions
-                </div>
-                <div class="bg-slate-800 px-6 py-2 rounded-full border border-slate-700">
-                    <span class="text-teal-400 font-bold">T</span>rust
-                </div>
-            </div>
+      const systemInstruction = {
+        parts: [{
+          text: `You are ${activeCharacter}. Persona: ${characters[activeCharacter]}. 
+          Setting: A loud, chaotic basement party. You are dripping wet and standing on a table.
+          GUIDELINES: 
+          - Match the user's intent. If they are vulgar/dirty, lean into it with dominant, provocative energy.
+          - BE PUNCHY. Max 3 sentences. No long-winded paragraphs.
+          - Be raw and visceral. Talk about your wet skin, the heat, the crowd staring at us.
+          - Use a tone that feels like you're shouting over music.`
+        }]
+      };
+
+      const data = await fetchWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents, systemInstruction })
+        }
+      );
+
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (reply) {
+        setMessages(prev => [...prev, { role: 'char', text: reply }]);
+        if (liveAudioEnabled) {
+          speakMessage(reply);
+        }
+        analyzeVibe();
+      }
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'char', text: "Signal's dying in this basement..." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+    setVibeSummary("Waiting for sparks...");
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
+  return (
+    <div className="min-h-screen bg-black text-white font-sans flex flex-col items-center justify-center p-0 md:p-4 selection:bg-purple-500">
+      {/* Phone Mockup */}
+      <div className="w-full max-w-md h-screen md:h-[850px] bg-[#0c0c0d] md:rounded-[3rem] flex flex-col overflow-hidden border-x-4 border-[#2c2c2e] shadow-2xl relative">
+        
+        {/* Notch */}
+        <div className="hidden md:flex h-8 w-full justify-center items-center gap-1 mt-1 z-50">
+           <div className="w-24 h-6 bg-black rounded-full"></div>
         </div>
-    </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+        {/* Header */}
+        <div className="p-4 flex items-center justify-between border-b border-[#2c2c2e] bg-[#0c0c0d]/90 backdrop-blur-xl sticky top-0 z-40">
+          <div className="flex items-center gap-3">
+            <button className="p-1 hover:bg-[#1c1c1e] rounded-full transition-colors text-neutral-500">
+              <ChevronLeft size={24} />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-900 to-indigo-700 flex items-center justify-center font-bold border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                {activeCharacter[0]}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold tracking-tight">{activeCharacter.toLowerCase()}</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse shadow-[0_0_5px_purple]"></div>
+                  <span className="text-[9px] text-purple-400 font-black uppercase tracking-widest">LIVE SESSION</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className={`p-2 rounded-full transition-all ${showSettings ? 'bg-purple-600 text-white' : 'hover:bg-neutral-800 text-neutral-400'}`}
+            >
+              <Settings size={18} />
+            </button>
+            <button 
+              onClick={() => setLiveAudioEnabled(!liveAudioEnabled)}
+              className={`p-2 rounded-full transition-all ${liveAudioEnabled ? 'text-purple-400' : 'text-neutral-600'}`}
+            >
+              {liveAudioEnabled ? <Mic size={20} /> : <MicOff size={20} />}
+            </button>
+          </div>
+        </div>
 
-        <!-- Section 1: The Philosophy Shift -->
-        <section>
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4 border-l-4 border-blue-600 pl-4">The Shift: Checklist vs. Mindset</h2>
-                <p class="text-lg text-slate-600 leading-relaxed max-w-4xl">
-                    The traditional NEST process provided a robust technical checklist, but it often left technicians feeling like "robots" and customers feeling processed. NEST 2.0, powered by the G.O.P.R.O. engine, shifts the focus to <strong>human psychology</strong>. We aren't just checking boxes; we are managing anxiety and building authority.
-                </p>
+        {/* Vibe Badge */}
+        <div className="px-4 py-2 bg-gradient-to-r from-purple-950/40 to-transparent border-b border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+             <Activity size={12} className="text-purple-500" />
+             <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-tighter">Vibe Radar:</span>
+             <span className="text-[10px] font-black text-purple-300 uppercase tracking-tight italic">
+               {isAnalyzingVibe ? "Scanning..." : vibeSummary}
+             </span>
+          </div>
+          <button onClick={suggestScene} className="flex items-center gap-1 text-[9px] font-black text-indigo-400 hover:text-indigo-300 transition-colors uppercase">
+            <Sparkles size={10} /> Shift Scene
+          </button>
+        </div>
+
+        {/* Character Quick Switch */}
+        <div className="flex gap-2 p-3 overflow-x-auto bg-black/40 no-scrollbar border-b border-white/5">
+          {Object.keys(characters).map(name => (
+            <button 
+              key={name}
+              onClick={() => { setActiveCharacter(name); setMessages([]); setVibeSummary("Waiting for sparks..."); }}
+              className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeCharacter === name ? 'bg-purple-600/20 text-purple-300 border-purple-500/50' : 'bg-[#1c1c1e] text-neutral-600 border-transparent'} border`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+
+        {/* Settings Overlay */}
+        {showSettings && (
+          <div className="absolute inset-0 top-[136px] bg-black/95 z-50 p-6 animate-in fade-in slide-in-from-top-4 duration-300 backdrop-blur-md">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-black uppercase tracking-[0.2em] text-purple-400">Settings</h3>
+              <button onClick={() => setShowSettings(false)} className="text-[10px] font-bold text-neutral-500 uppercase">Close</button>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                <!-- Text Content -->
-                <div class="space-y-6">
-                    <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-                        <h3 class="font-bold text-xl text-slate-700 mb-2">Old NEST</h3>
-                        <ul class="list-disc list-inside text-slate-600 space-y-2">
-                            <li>Focus on "Interviewing" the client</li>
-                            <li>5-Tier Options (Decision Fatigue)</li>
-                            <li>Technical "Load Calculations" focus</li>
-                            <li>Objection Handling at the end</li>
-                        </ul>
-                    </div>
-                    <div class="bg-blue-50 p-6 rounded-lg shadow-md border-l-4 border-orange-500">
-                        <h3 class="font-bold text-xl text-blue-900 mb-2">NEST 2.0 (G.O.P.R.O.)</h3>
-                        <ul class="list-disc list-inside text-slate-700 space-y-2">
-                            <li>Focus on "Leading" via G.A.C.A.</li>
-                            <li>3-Option "Sweet Spot" (Good/Better/Best)</li>
-                            <li>"Symptom vs. System" focus</li>
-                            <li>Objection Discovery throughout</li>
-                        </ul>
-                    </div>
+            <div className="space-y-6">
+              <div>
+                <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-3">✨ Select Character Voice</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {availableVoices.map(v => (
+                    <button 
+                      key={v}
+                      onClick={() => setVoiceName(v)}
+                      className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${voiceName === v ? 'bg-purple-600 border-purple-400 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-500 hover:border-neutral-600'}`}
+                    >
+                      {v}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                <!-- Radar Chart Container -->
-                <div class="flex flex-col">
-                    <div class="chart-container">
-                        <canvas id="philosophyRadarChart"></canvas>
-                    </div>
-                    <p class="text-center text-sm text-slate-500 mt-2 italic">Comparative metrics based on technician feedback and sales psychology principles.</p>
-                </div>
+              <div className="pt-4 border-t border-white/5">
+                <button 
+                  onClick={clearChat}
+                  className="w-full py-3 rounded-xl bg-red-950/20 border border-red-900/30 text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={14} /> Clear Narrative
+                </button>
+              </div>
             </div>
-        </section>
+          </div>
+        )}
 
-        <!-- Section 2: Step 1 - Nurture (G.A.C.A.) -->
-        <section class="bg-slate-50 p-8 rounded-2xl">
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4 border-l-4 border-teal-500 pl-4">Step 1: Nurture (The First 60 Seconds)</h2>
-                <p class="text-lg text-slate-600 leading-relaxed">
-                    You don't have 10 minutes to build trust; you have 60 seconds. The G.A.C.A. framework replaces aimless small talk with a surgical opening statement that establishes <strong>Gratitude</strong>, <strong>Authorization</strong>, <strong>Credibility</strong>, and <strong>Agreement</strong>. This effectively "postures" the technician as a leader, not a laborer.
+        {/* Chat Feed */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar bg-gradient-to-b from-transparent to-[#0c0c0d]">
+          {messages.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center space-y-4 text-center px-10">
+              <div className="p-5 rounded-2xl bg-purple-950/20 border border-purple-500/10 shadow-[0_0_30px_rgba(168,85,247,0.05)]">
+                <Flame className="text-purple-500 w-10 h-10 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[12px] font-bold text-neutral-300">BASEMENT PARTY • 2:44 AM</p>
+                <p className="text-[11px] text-neutral-500 italic leading-relaxed">
+                  {activeCharacter} is watching you from the beer-splashed table. The water is dripping off her outfit as the crowd cheers. What are you going to do?
                 </p>
+              </div>
             </div>
+          )}
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Visual Flow -->
-                <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-blue-500">
-                        <div class="text-4xl mb-2">🙏</div>
-                        <h3 class="font-bold text-lg text-slate-800">Gratitude</h3>
-                        <p class="text-sm text-slate-600">"Thank you for choosing Cardinal." Releases oxytocin, lowers defenses.</p>
-                    </div>
-                    <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-orange-500">
-                        <div class="text-4xl mb-2">🛡️</div>
-                        <h3 class="font-bold text-lg text-slate-800">Authorization</h3>
-                        <p class="text-sm text-slate-600">"May I park here? May I use floor protectors?" Gives customer control.</p>
-                    </div>
-                    <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-teal-500">
-                        <div class="text-4xl mb-2">🏆</div>
-                        <h3 class="font-bold text-lg text-slate-800">Credibility</h3>
-                        <p class="text-sm text-slate-600">"200 years of combined experience." Borrowing the team's authority.</p>
-                    </div>
-                    <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-slate-800">
-                        <div class="text-4xl mb-2">🤝</div>
-                        <h3 class="font-bold text-lg text-slate-800">Agreement</h3>
-                        <p class="text-sm text-slate-600">"I need 60-90 minutes. I'll check X, then Y. Does that sound fair?"</p>
-                    </div>
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
+              {m.role === 'system' ? (
+                <div className="w-full flex justify-center my-2">
+                   <div className="bg-indigo-950/30 border border-indigo-500/20 px-4 py-2 rounded-xl text-[10px] text-indigo-300 font-medium italic text-center max-w-[90%]">
+                      {m.text}
+                   </div>
                 </div>
-
-                <!-- Time Allocation Chart -->
-                <div class="flex flex-col justify-center">
-                    <div class="chart-container" style="height: 300px;">
-                        <canvas id="gacaBarChart"></canvas>
-                    </div>
-                    <p class="text-center text-xs text-slate-500 mt-2">Recommended time allocation for the perfect entry.</p>
+              ) : (
+                <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-[13px] leading-relaxed shadow-lg relative ${
+                  m.role === 'user' 
+                  ? 'bg-purple-600 text-white rounded-br-none' 
+                  : 'bg-[#1c1c1e] text-neutral-200 rounded-bl-none border border-white/5'
+                }`}>
+                  {m.text}
+                  {m.role === 'char' && (
+                    <button 
+                      onClick={() => speakMessage(m.text)}
+                      className="absolute -right-8 top-1/2 -translate-y-1/2 p-1 text-neutral-600 hover:text-purple-400 transition-colors"
+                    >
+                      <Volume2 size={14} />
+                    </button>
+                  )}
                 </div>
+              )}
             </div>
-        </section>
+          ))}
 
-        <!-- Section 3: Trust Velocity (Time Series) -->
-        <section>
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4 border-l-4 border-indigo-600 pl-4">Trust Velocity: Speed to Rapport</h2>
-                <p class="text-lg text-slate-600 leading-relaxed">
-                    In the old model, technicians attempted to build trust slowly throughout the call. In the NEST 2.0 model, we front-load trust using G.A.C.A. This creates a "Trust Reservoir" that sustains the relationship through the Evaluation and Solutions phases, preventing the dip that usually occurs when price is mentioned.
-                </p>
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="bg-[#1c1c1e] px-4 py-3 rounded-2xl rounded-bl-none flex gap-1 items-center">
+                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce"></span>
+                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+              </div>
             </div>
+          )}
+          <div ref={chatEndRef} />
+        </div>
 
-            <div class="w-full">
-                <!-- Plotly Chart Container - Full Width -->
-                <div id="trustVelocityChart" class="w-full bg-white rounded-lg shadow-md p-2 h-96"></div>
+        {/* Input Area */}
+        <div className="p-4 bg-[#0c0c0d] border-t border-[#2c2c2e] sticky bottom-0">
+          <div className="flex items-center gap-3 bg-[#1c1c1e] border border-neutral-800 rounded-2xl px-4 py-1.5 focus-within:border-purple-500/50 transition-all focus-within:ring-1 focus-within:ring-purple-500/20">
+            <input 
+              value={inputMsg}
+              onChange={(e) => setInputMsg(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+              placeholder={`Tell ${activeCharacter} what you want...`}
+              className="flex-1 bg-transparent text-sm py-2.5 outline-none placeholder:text-neutral-700"
+            />
+            <button 
+              onClick={sendMessage}
+              disabled={isTyping || !inputMsg.trim()}
+              className="p-2 text-purple-500 hover:scale-110 active:scale-95 disabled:opacity-30 transition-transform"
+            >
+              <Send size={22} />
+            </button>
+          </div>
+          
+          <div className="mt-4 flex justify-center items-center gap-6 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em]">
+            <span className="flex items-center gap-1.5"><Zap size={10} className="text-purple-600" /> RAW REALISM</span>
+            <span className="flex items-center gap-1.5"><Volume2 size={10} className="text-purple-600" /> LIVE VOX ACTIVE</span>
+          </div>
+        </div>
+
+        {/* Voice Animation Overlay */}
+        {isSpeaking && (
+          <div className="absolute top-24 right-4 z-50">
+            <div className="flex gap-1 items-center bg-purple-600 shadow-[0_0_20px_rgba(168,85,247,0.4)] px-3 py-1.5 rounded-full border border-purple-400">
+              <div className="flex gap-0.5 items-end h-3">
+                <div className="w-0.5 bg-white animate-[vibe_0.4s_ease-in-out_infinite]"></div>
+                <div className="w-0.5 bg-white animate-[vibe_0.6s_ease-in-out_infinite]"></div>
+                <div className="w-0.5 bg-white animate-[vibe_0.5s_ease-in-out_infinite]"></div>
+                <div className="w-0.5 bg-white animate-[vibe_0.7s_ease-in-out_infinite]"></div>
+              </div>
+              <span className="text-[8px] font-black uppercase text-white tracking-widest leading-none">Voice Active</span>
             </div>
-        </section>
+          </div>
+        )}
 
-        <!-- Section 4: The Financial Case (Nest Protection Plan) -->
-        <section class="bg-slate-900 text-white p-8 rounded-2xl">
-            <div class="mb-8 text-center">
-                <h2 class="text-3xl font-bold mb-4">The Value of Protection</h2>
-                <p class="text-lg text-slate-300 max-w-3xl mx-auto">
-                    Why do we offer the Nest Protection Plan? It's not just a membership; it's a math equation that overwhelmingly favors the customer. We are selling <strong>$2,385+</strong> of value for a <strong>$119.88</strong> annual investment.
-                </p>
-            </div>
+      </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                <!-- Key Stats -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-slate-800 p-6 rounded-xl text-center border border-slate-700">
-                        <div class="text-sm text-slate-400 uppercase tracking-wider">Annual Cost</div>
-                        <div class="text-4xl font-bold text-green-400">$119.88</div>
-                        <div class="text-xs text-slate-500 mt-1">($9.99/mo)</div>
-                    </div>
-                    <div class="bg-slate-800 p-6 rounded-xl text-center border border-slate-700">
-                        <div class="text-sm text-slate-400 uppercase tracking-wider">Total Value</div>
-                        <div class="text-4xl font-bold text-blue-400">$2,385+</div>
-                        <div class="text-xs text-slate-500 mt-1">(Services + Warranties)</div>
-                    </div>
-                    <div class="bg-slate-800 p-6 rounded-xl text-center border border-slate-700 col-span-2">
-                        <div class="text-sm text-slate-400 uppercase tracking-wider">Service Fee Savings</div>
-                        <div class="text-3xl font-bold text-orange-400">$0 vs $97</div>
-                        <div class="text-xs text-slate-500 mt-1">Per visit charge</div>
-                    </div>
-                </div>
-
-                <!-- Value Stack Chart -->
-                <div class="flex flex-col">
-                    <div class="chart-container" style="background: rgba(255,255,255,0.05);">
-                        <canvas id="protectionPlanChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section 5: The Paradox of Choice (Solutions) -->
-        <section>
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4 border-l-4 border-orange-500 pl-4">Step 3: Solutions (The Rule of Three)</h2>
-                <p class="text-lg text-slate-600 leading-relaxed">
-                    The original NEST PDF suggested 5 star-tiered packages. While comprehensive, psychology shows that excessive choice leads to "Analysis Paralysis." NEST 2.0 simplifies this to <strong>Good, Better, Best</strong>. This "Goldilocks Effect" dramatically increases the likelihood of a customer choosing the middle (Better) option rather than choosing nothing at all.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div class="chart-container">
-                    <canvas id="choiceParadoxChart"></canvas>
-                </div>
-                
-                <div class="flex flex-col justify-center space-y-4">
-                    <div class="bg-white border-l-4 border-green-500 p-4 shadow-sm">
-                        <h4 class="font-bold text-lg">Option 1: Good</h4>
-                        <p class="text-slate-600 text-sm">Fixes the immediate symptom. "Stops the bleeding."</p>
-                    </div>
-                    <div class="bg-white border-l-4 border-blue-500 p-4 shadow-md transform scale-105">
-                        <h4 class="font-bold text-lg">Option 2: Better (The Sweet Spot)</h4>
-                        <p class="text-slate-600 text-sm">Fixes the symptom + protects the system. Most popular choice.</p>
-                    </div>
-                    <div class="bg-white border-l-4 border-purple-500 p-4 shadow-sm">
-                        <h4 class="font-bold text-lg">Option 3: Best</h4>
-                        <p class="text-slate-600 text-sm">Total restoration. The "Like New" permanent solution.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <footer class="bg-slate-900 text-slate-400 py-8 text-center border-t border-slate-800">
-        <p class="text-sm">© 2026 Cardinal Plumbing, Heating and Air. Internal Training Material.</p>
-        <p class="text-xs mt-2 text-slate-600">Source: NEST Process PDF & G.O.P.R.O. Methodology Transcripts.</p>
-        <!-- Confirmation of NO SVG and NO MERMAID -->
-        <!-- CONFIRMATION: Neither Mermaid JS nor SVG graphics were used in this output. -->
-    </footer>
-
-    <script>
-        // --- Utility Functions ---
-
-        /**
-         * Splits a label into multiple lines if it exceeds the maxLength.
-         * Used for Chart.js label wrapping logic.
-         */
-        function wrapLabel(str, maxLength) {
-            if (str.length <= maxLength) return str;
-            const words = str.split(' ');
-            const lines = [];
-            let currentLine = words[0];
-
-            for (let i = 1; i < words.length; i++) {
-                if (currentLine.length + 1 + words[i].length <= maxLength) {
-                    currentLine += ' ' + words[i];
-                } else {
-                    lines.push(currentLine);
-                    currentLine = words[i];
-                }
-            }
-            lines.push(currentLine);
-            return lines;
+      <style>{`
+        @keyframes vibe {
+          0%, 100% { height: 4px; }
+          50% { height: 12px; }
         }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+    </div>
+  );
+};
 
-        /**
-         * Applies the wrapping logic to an array of labels.
-         */
-        function processLabels(labels) {
-            return labels.map(label => wrapLabel(label, 16));
-        }
-
-        /**
-         * Common Chart Options for consistency
-         */
-        const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        font: { family: 'Inter', size: 12 },
-                        padding: 20
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                    padding: 12,
-                    cornerRadius: 8,
-                    callbacks: {
-                        title: function(tooltipItems) {
-                            const item = tooltipItems[0];
-                            let label = item.chart.data.labels[item.dataIndex];
-                            if (Array.isArray(label)) {
-                                return label.join(' ');
-                            } else {
-                                return label;
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
-        // --- Chart 1: Philosophy Radar Chart ---
-        const radarCtx = document.getElementById('philosophyRadarChart').getContext('2d');
-        new Chart(radarCtx, {
-            type: 'radar',
-            data: {
-                labels: processLabels(['Trust Building Speed', 'Customer Anxiety', 'Tech Confidence', 'Simplicity', 'Sales Conversion']),
-                datasets: [{
-                    label: 'Old NEST Process',
-                    data: [40, 80, 50, 40, 50],
-                    fill: true,
-                    backgroundColor: 'rgba(148, 163, 184, 0.2)',
-                    borderColor: 'rgb(148, 163, 184)',
-                    pointBackgroundColor: 'rgb(148, 163, 184)',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: 'rgb(148, 163, 184)'
-                }, {
-                    label: 'NEST 2.0 (G.O.P.R.O.)',
-                    data: [95, 20, 90, 85, 80],
-                    fill: true,
-                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
-                    borderColor: 'rgb(37, 99, 235)',
-                    pointBackgroundColor: 'rgb(37, 99, 235)',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: 'rgb(37, 99, 235)'
-                }]
-            },
-            options: {
-                ...commonOptions,
-                scales: {
-                    r: {
-                        angleLines: { color: 'rgba(0,0,0,0.1)' },
-                        grid: { color: 'rgba(0,0,0,0.05)' },
-                        pointLabels: {
-                            font: { size: 12, family: 'Inter' }
-                        },
-                        suggestedMin: 0,
-                        suggestedMax: 100
-                    }
-                }
-            }
-        });
-
-        // --- Chart 2: GACA Time Allocation (Horizontal Bar) ---
-        const gacaCtx = document.getElementById('gacaBarChart').getContext('2d');
-        new Chart(gacaCtx, {
-            type: 'bar',
-            data: {
-                labels: processLabels(['Gratitude', 'Authorization', 'Credibility', 'Agreement']),
-                datasets: [{
-                    label: 'Seconds Spent',
-                    data: [10, 15, 20, 15], // Total 60 seconds
-                    backgroundColor: [
-                        'rgba(37, 99, 235, 0.8)', // Blue
-                        'rgba(249, 115, 22, 0.8)', // Orange
-                        'rgba(20, 184, 166, 0.8)', // Teal
-                        'rgba(30, 41, 59, 0.8)'   // Slate
-                    ],
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                ...commonOptions,
-                plugins: {
-                    ...commonOptions.plugins,
-                    legend: { display: false }
-                },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        title: { display: true, text: 'Seconds' }
-                    },
-                    y: {
-                        grid: { display: false }
-                    }
-                }
-            }
-        });
-
-        // --- Chart 3: Trust Velocity (Plotly.js) ---
-        // Using Plotly for a time-series line chart to show the "curve" of trust
-        const traceOld = {
-            x: [0, 1, 5, 10, 20, 30, 40, 50, 60], // Minutes
-            y: [10, 15, 20, 25, 30, 35, 20, 15, 10], // Old Trust: Slow build, dip at price
-            mode: 'lines',
-            name: 'Old NEST Process',
-            line: { color: '#94A3B8', width: 3, dash: 'dot' } // Slate
-        };
-
-        const traceNew = {
-            x: [0, 1, 5, 10, 20, 30, 40, 50, 60],
-            y: [10, 85, 88, 90, 92, 95, 94, 96, 98], // New Trust: Spike at 1m (GACA), Sustained
-            mode: 'lines',
-            name: 'NEST 2.0 (G.O.P.R.O.)',
-            line: { color: '#2563EB', width: 4 } // Blue
-        };
-
-        const layout = {
-            title: { text: 'Trust Levels Over Call Duration', font: { family: 'Inter', size: 18, color: '#1E293B' } },
-            xaxis: { title: 'Time (Minutes)', showgrid: false },
-            yaxis: { title: 'Customer Trust Level', range: [0, 100], showgrid: true, gridcolor: '#F1F5F9' },
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            font: { family: 'Inter' },
-            showlegend: true,
-            legend: { x: 0.5, xanchor: 'center', y: -0.2, orientation: 'h' },
-            margin: { l: 50, r: 20, t: 50, b: 50 }
-        };
-
-        Plotly.newPlot('trustVelocityChart', [traceOld, traceNew], layout, {responsive: true, displayModeBar: false});
-
-
-        // --- Chart 4: Protection Plan Value Stack (Grouped Bar) ---
-        const planCtx = document.getElementById('protectionPlanChart').getContext('2d');
-        new Chart(planCtx, {
-            type: 'bar',
-            data: {
-                labels: processLabels(['HVAC Tune Up', 'Plumbing Inspect', 'Water Heater Flush', 'Sewer Line Video', 'Service Fee (1 Visit)']),
-                datasets: [{
-                    label: 'Cost Without Plan',
-                    data: [497, 497, 597, 597, 97],
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Transparent White
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
-                    borderWidth: 1
-                }, {
-                    label: 'Cost With Plan',
-                    data: [0, 0, 0, 0, 0], // Included
-                    backgroundColor: '#10B981', // Green
-                    borderColor: '#10B981',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                ...commonOptions,
-                plugins: {
-                    ...commonOptions.plugins,
-                    title: {
-                        display: true,
-                        text: 'Included Value vs. Out-of-Pocket Cost',
-                        color: 'white'
-                    },
-                    legend: {
-                        labels: { color: 'white' }
-                    }
-                },
-                scales: {
-                    y: {
-                        ticks: { color: 'rgba(255,255,255,0.7)', callback: function(value) { return '$' + value; } },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    },
-                    x: {
-                        ticks: { color: 'rgba(255,255,255,0.7)' },
-                        grid: { display: false }
-                    }
-                }
-            }
-        });
-
-        // --- Chart 5: Paradox of Choice (Adoption Rates) ---
-        const choiceCtx = document.getElementById('choiceParadoxChart').getContext('2d');
-        new Chart(choiceCtx, {
-            type: 'doughnut',
-            data: {
-                labels: processLabels(['Closed Sales', 'No Decision / Confused']),
-                datasets: [{
-                    label: '5-Tier Options (Old)',
-                    data: [40, 60],
-                    backgroundColor: ['#CBD5E1', '#E2E8F0'], // Muted Slate
-                    borderWidth: 0
-                }, {
-                    label: '3-Tier Options (New)',
-                    data: [85, 15],
-                    backgroundColor: ['#F97316', '#F1F5F9'], // Orange vs Light
-                    borderWidth: 0,
-                    weight: 2 // Make this ring thicker/outer
-                }]
-            },
-            options: {
-                ...commonOptions,
-                cutout: '40%',
-                plugins: {
-                    ...commonOptions.plugins,
-                    title: {
-                        display: true,
-                        text: 'Closing Rate: 3 Options (Outer) vs 5 Options (Inner)'
-                    }
-                }
-            }
-        });
-
-    </script>
-</body>
-</html>
+export default App;
